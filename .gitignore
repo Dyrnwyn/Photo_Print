@@ -1,5 +1,10 @@
 /Include/*
 /Lib/*
 /Scripts/*
+/bin/*
+/include/*
+/lib/*
+/share/*
+lib64
 pyvenv.cfg
 *.pyc
