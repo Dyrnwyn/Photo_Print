@@ -3,11 +3,36 @@ from PyQt5 import QtWidgets, QtCore
 import window
 import combinator
 import os
-import psd-tools
+from psd_tools import PSDImage
 
+
+dir_for_png = 'C:\\Объекты\\print_photo_png'
+progress_bar_maximum = 0
+dict_of_psd_files = {}
+ratio = {'10х15': 1.5,
+         '15х20': 1.333,
+         '20х30': 1.5 }
+
+
+class ThreadForConvert(QtCore.QThread):
+    count_converted_photo = QtCore.pyqtSignal(int)
+    def __init__(self):
+        QtCore.QThread.__init__(self)
+    def run(self):
+        global dir_for_png
+        global dict_of_psd_files
+        count = 0
+        for k,v in dict_of_psd_files.items():
+            path_for_png = dir_for_png + '\\' + os.path.split(k)[1]
+            for file in v:
+                psd_file = PSDImage.open(k + '\\' + file)
+                img = psd_file.composite()
+                img.save(path_for_png + '\\' + file[0:-4] + '.png', compress_level=0, dpi=(400,400))
+                count += 1
+                self.count_converted_photo.emit(count)
+        
 
 class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
-    dir_for_png = 'C:\\Объекты\\print_photo_png'
     row_count = 0 # счетчик строк, заполненных в таблице
     count_photo = { "п_10х15_": 0, #Словарь подсчета количества печатаемых фото
                     "п_15х20_": 0,
@@ -23,13 +48,36 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.progressBar.setValue(0)
         self.addFileButton.clicked.connect(self.add_file)
         self.addDirectoryButton.clicked.connect(self.add_file_from_folder)
         self.composeButton.clicked.connect(self.compose_files)
-        self.progressBar.setVisible(False)
         self.tableWidget.setRowCount(500) # устанавливаем количество строк в 500
+        self.convert_psd_to_png_thread = ThreadForConvert()
+        self.convert_psd_to_png_thread.started.connect(self.on_start_convert)
+        self.convert_psd_to_png_thread.finished.connect(self.on_finished_convert)
+        self.convert_psd_to_png_thread.count_converted_photo.connect(self.on_change_convert, QtCore.Qt.QueuedConnection)
+
+    def on_change_convert(self, v):
+        """Функция вызываемая во время процесса конвертации"""
+        self.progressBar.setValue(v)
+
+    def on_start_convert(self):
+        """Функция вызываемая при начале процесса конвертации"""
+        self.composeButton.setDisabled(True)
+        self.progressBar.setMaximum(progress_bar_maximum)
+
+    def on_finished_convert(self): 
+        """Функция вызываемая по завершении процесса конвертации"""
+        self.composeButton.setDisabled(False)
+
+
+    def convert_psd_to_png(self):
+        print(dict_of_psd_files)
+        self.convert_psd_to_png_thread.start()
 
     def zeroing_count_photo(self):
+        """Функция обнуления количества изделий в словаре"""
         for k,v in self.count_photo.items():
             self.count_photo[k] = 0
 
@@ -93,23 +141,21 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         чтобы сконвертировать туда png. Основная папка
         описана в переменной dir_for_png"""
         try:
-            os.mkdir(self.dir_for_png)
+            os.mkdir(dir_for_png)
         except Exception as e:
             print(e)
         for k,v in dict_of_psd_files.items():
-            directory_object = self.dir_for_png + '\\' + os.path.split(k)[1]
+            directory_object = dir_for_png + '\\' + os.path.split(k)[1]
             try:
                 os.mkdir(directory_object)
             except Exception as e:
                 print(e)
-
-    def convert_psd_to_png(self, dict_of_psd_files):
-        for k,v in dict_of_psd_files.items():
-            path_for_png_object = 
+        
 
     def get_list_of_psd_from_table(self): #создаем словарь на основании заполненной таблицы
         count_row = 0                     # вида {путь к файлу: [список файлов]}
         dict_of_psd_file = {}
+        global progress_bar_maximum
         while self.tableWidget.item(count_row, 0) != None:
             path_to_file = self.tableWidget.item(count_row, 2).text()
             if path_to_file not in dict_of_psd_file:
@@ -120,12 +166,14 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
                 list_of_files = dict_of_psd_file[path_to_file]
                 list_of_files.append(self.tableWidget.item(count_row, 0).text())
             count_row += 1
+        progress_bar_maximum = count_row  # получаем количество фотографий для индикатора хода процесса
         return dict_of_psd_file
 
     def compose_files(self):
+        global dict_of_psd_files
         dict_of_psd_files = self.get_list_of_psd_from_table()
         self.create_object_dir(dict_of_psd_files)
-        self.convert_psd_to_png(dict_of_psd_files)
+        self.convert_psd_to_png()
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
