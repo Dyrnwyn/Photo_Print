@@ -19,6 +19,8 @@ ratio_dict = {"п_10х15_": 1.5,
               "календарик 7х10": 1.428,
               "Брелок 58": 0.32,
               "Зеркало 75": 0.4,
+              "Значок 75": 0.4,
+              "Значок 100": 0.6,
               "Значок 158": 0.84,
               "Копилка 158": 0.84,
               "Кружка-термос с крышкой": 0}
@@ -44,12 +46,13 @@ class ThreadForConvert(QtCore.QThread):
                 psd_file = PSDImage.open(k + '\\' + file)
                 img = psd_file.composite()
                 photo_format = file.split("_")[1]
+                ratio = self.get_ratio(file)
                 if photo_format in self.photo_name_list:
-                    img_resized = self.convert_photo_image(img)
+                    img_resized = self.convert_photo_image(img, ratio)
                 elif photo_format in self.cup_name_list:
-                    img_resized = self.convert_cup_image(img)
+                    img_resized = self.convert_cup_image(img, ratio)
                 elif photo_format in self.badge_name_list:
-                    img_resized = self.convert_badge_image(img)
+                    img_resized = self.convert_badge_image(img, ratio)
                 else:
                     pass
                 img_resized.save(path_for_png + '\\' + file[0: -4] + '.png', compress_level=0, dpi=(400, 400))
@@ -57,26 +60,32 @@ class ThreadForConvert(QtCore.QThread):
                 self.count_converted_photo.emit(count)
 
     def get_ratio(self, file_name):
-        global ratio
-        photo_size = file_name.split("_")[1]
-        return ratio[photo_size]
+        global ratio_dict
+        photo_size = file_name.split("_")[0] + "_" + file_name.split("_")[1] + "_"
+        return ratio_dict[photo_size]
 
-    def convert_photo_image(self, img):
+    def convert_photo_image(self, img, ratio):
         if img.width > img.height:   # опеределяем горизонтальную фотографию
-            new_width = img.height * self.get_ratio(file)
+            new_width = img.height * ratio
             left = (img.width - new_width) / 2
             upper = 0
             right = img.width - left
             lower = img.height
         elif img.width < img.height:  # опеределяем вертикальную фотографию
-            pass
+            new_width = img.height / ratio
+            left = (img.width - new_width) / 2
+            upper = 0
+            right = img.width - left
+            lower = img.height
         return img.crop((left, upper, right, lower))
 
-    def convert_cup_image(self, img):
-        pass
+    def convert_cup_image(self, img, ratio):
+        return img
 
-    def convert_badge_image(self, img):
-        pass
+    def convert_badge_image(self, img, ratio):
+        new_width = round(img.width * ratio)
+        new_height = round(img.height * ratio)
+        return img.resize((new_width, new_height))
 
 
 class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
