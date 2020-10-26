@@ -91,6 +91,8 @@ class ThreadForConvert(QtCore.QThread):
         return img.crop((left, upper, right, lower))
 
     def convert_wall_calendar_image(self, img, ratio):
+        """Конвертируем настенный календарь в пнг, размываем фото для нижнего слоя,
+        и вставляем сверху фото, меньшего размера, приблизительно 5-7мм рамки, нижнего слоя"""
         if img.width > img.height:   # опеределяем горизонтальную фотографию
             new_width = img.height * ratio
             left = (img.width - new_width) / 2
