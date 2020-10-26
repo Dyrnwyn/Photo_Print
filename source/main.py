@@ -4,32 +4,40 @@ import window
 import combinator
 import os
 from psd_tools import PSDImage
-import PIL
+from PIL import ImageFilter
 
 
 dir_for_png = 'C:\\Объекты\\print_photo_png'
 progress_bar_maximum = 0
 dict_of_psd_files = {}
+photo_dpi = (300, 300)
+
 ratio_dict = {"п_10х15_": 1.5,
               "п_15х20_": 1.333,
               "п_20х30_": 1.5,
-              "п_Настенный календарь_": 1,
-              "п_магнит_": 0,
+              "п_Настенный календарь_": 1.3778,
+              "п_магнит_": 1.428,
               "п_магнит 10х15_": 1.5,
-              "календарик 7х10": 1.428,
-              "Брелок 58": 0.32,
-              "Зеркало 75": 0.4,
-              "Значок 75": 0.4,
-              "Значок 100": 0.6,
-              "Значок 158": 0.84,
-              "Копилка 158": 0.84,
-              "Кружка-термос с крышкой": 0}
+              "о_10х15_": 1.5,
+              "о_15х20_": 1.333,
+              "о_20х30_": 1.5,
+              "о_Настенный календарь_": 1.3778,
+              "о_магнит 10х15_": 1.5,
+              "о_календарик 7х10_": 1.428,
+              "_Брелок 58_": 0.32,
+              "_Зеркало 75_": 0.4,
+              "_Значок 75_": 0.4,
+              "_Значок 100_": 0.518,
+              "_Значок 158_": 0.84,
+              "_Копилка 158_": 0.84,
+              "_Кружка-термос с крышкой_": 0}
 
 
 class ThreadForConvert(QtCore.QThread):
     count_converted_photo = QtCore.pyqtSignal(int)
     # списки форматов фотографий
-    photo_name_list = ("10х15", "15х20", "20х30", "Настенный календарь", "магнит", "магнит 10х15", "календарик 7х10")
+    photo_name_list = ("10х15", "15х20", "20х30", "магнит", "магнит 10х15", "календарик 7х10")
+    wall_calendar_name_list = ("Настенный календарь", )
     badge_name_list = ("Брелок 58", "Зеркало 75", "Значок 75", "Значок 100", "Значок 158", "Копилка 158")
     cup_name_list = ("Кружка-термос с крышкой")
 
@@ -37,6 +45,7 @@ class ThreadForConvert(QtCore.QThread):
         QtCore.QThread.__init__(self)
 
     def run(self):
+        global photo_dpi
         global dir_for_png
         global dict_of_psd_files
         count = 0
@@ -51,11 +60,13 @@ class ThreadForConvert(QtCore.QThread):
                     img_resized = self.convert_photo_image(img, ratio)
                 elif photo_format in self.cup_name_list:
                     img_resized = self.convert_cup_image(img, ratio)
+                elif photo_format in self.wall_calendar_name_list:
+                    img_resized = self.convert_wall_calendar_image(img, ratio)
                 elif photo_format in self.badge_name_list:
                     img_resized = self.convert_badge_image(img, ratio)
                 else:
                     pass
-                img_resized.save(path_for_png + '\\' + file[0: -4] + '.png', compress_level=0, dpi=(400, 400))
+                img_resized.save(path_for_png + '\\' + file[0: -4] + '.png', compress_level=0, dpi=photo_dpi)
                 count += 1
                 self.count_converted_photo.emit(count)
 
@@ -78,6 +89,29 @@ class ThreadForConvert(QtCore.QThread):
             right = img.width - left
             lower = img.height
         return img.crop((left, upper, right, lower))
+
+    def convert_wall_calendar_image(self, img, ratio):
+        if img.width > img.height:   # опеределяем горизонтальную фотографию
+            new_width = img.height * ratio
+            left = (img.width - new_width) / 2
+            upper = 0
+            right = img.width - left
+            lower = img.height
+            cropped_img = img.crop((left, upper, right, lower)).resize((3661, 2657))
+        elif img.width < img.height:  # опеределяем вертикальную фотографию
+            new_width = img.height / ratio
+            left = (img.width - new_width) / 2
+            upper = 0
+            right = img.width - left
+            lower = img.height
+            cropped_img = img.crop((left, upper, right, lower)).resize((2657, 3661))
+        front_img = cropped_img.resize((round(cropped_img.width/1.0505), round(cropped_img.height/1.0505)))
+        blured_img = cropped_img.filter(ImageFilter.GaussianBlur(radius = 35))
+        left = round((blured_img.width - front_img.width)/2)
+        top = round((blured_img.height - front_img.height)/2)
+        blured_img.alpha_composite(front_img, (left, top))
+        return blured_img
+        
 
     def convert_cup_image(self, img, ratio):
         return img
