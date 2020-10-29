@@ -32,6 +32,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.addFileButton.clicked.connect(self.add_file)
         self.addDirectoryButton.clicked.connect(self.add_file_from_folder)
         self.composeButton.clicked.connect(self.compose_files)
+        self.clearButton.clicked.connect(self.clear_selected_photo)
         self.tableWidget.setRowCount(500)  # устанавливаем количество строк в 500
         self.convert_psd_to_png_thread = ThreadForConvert()
         self.convert_psd_to_png_thread.started.connect(self.on_start_convert)
@@ -65,13 +66,25 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         for k, v in self.count_photo.items():
             self.count_photo[k] = 0
 
-    def add_amount_of_photo_to_label(self, file_name):
-        _translate = QtCore.QCoreApplication.translate
+    def clear_selected_photo(self):
+        """Очистка таблицы, обнуление счетчика поля
+        обнуление количества фотографий, запись количества обнуленных фото в label"""
+        self.tableWidget.clearContents()
+        self.row_count = 0
+        self.zeroing_count_photo()
+        self.add_amount_of_photo_to_label()
+
+    def count_amount_of_photo(self, file_name):
+        """Подсчет количества фотографий каждого формата"""
         for k, v in self.count_photo.items():   # находим в файле количество в печать
             if k in file_name:              # и прибавляем к общему количеству данного формата фотографии
                 amount = int(file_name.split("_")[4])
                 v += amount
                 self.count_photo[k] = v
+
+    def add_amount_of_photo_to_label(self):
+        """Запись количества фотографий в label"""
+        _translate = QtCore.QCoreApplication.translate
         self.label_10x15.setText(_translate("MainWindow", "10x15: " + str(self.count_photo["п_10х15_"])))
         self.label_15x20.setText(_translate("MainWindow", "15x20: " + str(self.count_photo["п_15х20_"])))
         self.label_20x30.setText(_translate("MainWindow", "20x30: " + str(self.count_photo["п_20х30_"])))
@@ -82,6 +95,8 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
                                                    "п_магнит 10х15_"])))
         self.label_brelok58.setText(_translate("MainWindow", "Брелок 58: " + str(self.count_photo["_Брелок 58_"])))
         self.label_zerkalo75.setText(_translate("MainWindow", "Зеркало 75: " + str(self.count_photo["_Зеркало 75_"])))
+        self.label_znaciok75.setText(_translate("MainWindow", "Значок 75: " + str(self.count_photo["_Значок 75_"])))
+        self.label_znaciok100.setText(_translate("MainWindow", "Значок 100: " + str(self.count_photo["_Значок 100_"])))
         self.label_znaciok158.setText(_translate("MainWindow", "Значок 158: " + str(self.count_photo["_Значок 158_"])))
         self.label_kopilka158.setText(_translate("MainWindow", "Копилка 158: " + str(self.count_photo[
                                                  "_Копилка 158_"])))
@@ -94,20 +109,18 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.tableWidget.setItem(self.row_count, 0, QtWidgets.QTableWidgetItem(file))
         self.tableWidget.setItem(self.row_count, 1, QtWidgets.QTableWidgetItem(file_object))
         self.tableWidget.setItem(self.row_count, 2, QtWidgets.QTableWidgetItem(directory))
-        self.add_amount_of_photo_to_label(file)
+        self.count_amount_of_photo(file)
         self.row_count += 1
 
     def add_file_from_folder(self):
         """Добавляем список psd файлов в таблицу"""
-        self.zeroing_count_photo()
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку")
         list_of_psd_files = search_file("psd", directory)
-        self.tableWidget.clearContents()
-        self.row_count = 0
         file_object = os.path.split(directory)[1]  # имя объекта к которому принадлежит файл
         for file in list_of_psd_files:
             self.add_psd_files_to_table(file, file_object, directory)
         self.tableWidget.resizeColumnsToContents()
+        self.add_amount_of_photo_to_label()
 
     def add_file(self):
         dialogObject = QtWidgets.QFileDialog(self, "Добавить файл", "", "Файлы изображений (*.psd)")
@@ -121,7 +134,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
             file_object = os.path.split(directory)[1]
             self.add_psd_files_to_table(file_name, file_object, directory)
         self.tableWidget.resizeColumnsToContents()
-
+        self.add_amount_of_photo_to_label()
 
     def create_object_dir(self, dict_of_psd_files):
         """Создаем отдельные папки для каждого обьекта
