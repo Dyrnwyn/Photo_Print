@@ -7,6 +7,7 @@ from combinator import search_file, ThreadForConvert
 
 class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
     dir_for_png = 'C:\\Объекты\\print_photo_png'
+    name_dir_to_print = 'В печать'
     progress_bar_maximum = 0
     dict_of_psd_files = {}
     photo_dpi = (300, 300)
@@ -58,7 +59,8 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.composeButton.setDisabled(False)
 
     def convert_psd_to_png(self):
-        self.convert_psd_to_png_thread.set_var(self.photo_dpi, self.dict_of_psd_files, self.dir_for_png)
+        self.convert_psd_to_png_thread.set_var(self.photo_dpi, self.dict_of_psd_files, self.dir_for_png,
+                                               self.dir_for_png + '\\' + self.name_dir_to_print)
         self.convert_psd_to_png_thread.start()
 
     def zeroing_count_photo(self):
@@ -142,6 +144,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         описана в переменной dir_for_png"""
         try:
             os.mkdir(self.dir_for_png)
+            os.mkdir(self.dir_for_png + '\\' + self.name_dir_to_print)
         except Exception as e:
             pass
         for k, v in dict_of_psd_files.items():
