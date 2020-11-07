@@ -90,8 +90,8 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.label_10x15.setText(_translate("MainWindow", "10x15: " + str(self.count_photo["п_10х15_"])))
         self.label_15x20.setText(_translate("MainWindow", "15x20: " + str(self.count_photo["п_15х20_"])))
         self.label_20x30.setText(_translate("MainWindow", "20x30: " + str(self.count_photo["п_20х30_"])))
-        self.label_WallCalendar.setText
-        (_translate("MainWindow", "Настенный календарь: " + str(self.count_photo["п_Настенный календарь_"])))
+        self.label_WallCalendar.setText(_translate("MainWindow", "Настенный календарь: " + str(
+                                                   self.count_photo["п_Настенный календарь_"])))
         self.label_magnit.setText(_translate("MainWindow", "магнит: " + str(self.count_photo["п_магнит_"])))
         self.label_magnit_10x15.setText(_translate("MainWindow", "магнит 10х15: " + str(self.count_photo[
                                                    "п_магнит 10х15_"])))
@@ -117,12 +117,15 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
     def add_file_from_folder(self):
         """Добавляем список psd файлов в таблицу"""
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку")
-        list_of_psd_files = search_file("psd", directory)
-        file_object = os.path.split(directory)[1]  # имя объекта к которому принадлежит файл
-        for file in list_of_psd_files:
-            self.add_psd_files_to_table(file, file_object, directory)
-        self.tableWidget.resizeColumnsToContents()
-        self.add_amount_of_photo_to_label()
+        if directory != '':
+            list_of_psd_files = search_file("psd", directory)
+            file_object = os.path.split(directory)[1]  # имя объекта к которому принадлежит файл
+            for file in list_of_psd_files:
+                self.add_psd_files_to_table(file, file_object, directory)
+            self.tableWidget.resizeColumnsToContents()
+            self.add_amount_of_photo_to_label()
+        else:
+            pass
 
     def add_file(self):
         dialogObject = QtWidgets.QFileDialog(self, "Добавить файл", "", "Файлы изображений (*.psd)")
@@ -130,13 +133,16 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         dialogObject.setViewMode(1)
         dialogObject.exec()
         files = dialogObject.selectedFiles()
-        for file in files:
-            directory = os.path.split(file)[0]
-            file_name = os.path.split(file)[1]
-            file_object = os.path.split(directory)[1]
-            self.add_psd_files_to_table(file_name, file_object, directory)
-        self.tableWidget.resizeColumnsToContents()
-        self.add_amount_of_photo_to_label()
+        if files != []:
+            for file in files:
+                directory = os.path.split(file)[0]
+                file_name = os.path.split(file)[1]
+                file_object = os.path.split(directory)[1]
+                self.add_psd_files_to_table(file_name, file_object, directory)
+            self.tableWidget.resizeColumnsToContents()
+            self.add_amount_of_photo_to_label()
+        else:
+            pass
 
     def create_object_dir(self, dict_of_psd_files):
         """Создаем отдельные папки для каждого обьекта

@@ -1,7 +1,7 @@
 import os
 import re
 from psd_tools import PSDImage
-from PIL import ImageFilter, Image
+from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
 
 
@@ -108,7 +108,7 @@ class ThreadForConvert(QtCore.QThread):
 
     def run(self):
         self.convert_psd_to_png()
-        self.add_photo_to_a4_main()
+        self.add_photo_to_61x32_main()
 
     def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print):
         """Устанавливаем значения переменных
@@ -118,7 +118,20 @@ class ThreadForConvert(QtCore.QThread):
         self.dir_for_png = dir_for_png
         self.dir_to_print = dir_to_print
 
-    def add_photo_to_a4_main(self):
+    def get_font(self):
+        try:
+            font = ImageFont.truetype("Font\\CalibriBold.ttf", 50)
+            return font
+        except Exception as e:
+            print(e)
+
+    def draw_title(self, img, text, point):
+        font = self.get_font()
+        draw_text = ImageDraw.Draw(img)
+        draw_text.text(point, text, font=font, fill=(0, 0, 0))
+        return img
+
+    def add_photo_to_61x32_main(self):
         self.add_wallpaper_to_61x32()
 
     def add_flat_photo_to_a4(self):
@@ -128,16 +141,18 @@ class ThreadForConvert(QtCore.QThread):
         pass
 
     def add_wallpaper_to_61x32(self):
-        wallpaper_point = [[(60, 60), (240, 10)], [(3200, 10)]]
+        wallpaper_point = [[(60, 60), (240, 10)], [(2890, 60), (3640, 10)], [(5670, 60), (5700, 10)]]
         count_photo_on_61x32 = 0
-        photo_format = "п_Настенный календарь_"
-        walpaper_img, title = self.get_not_printed_photo_with_title(photo_format)
-        if self.get_availability_of_photo(photo_format):
-            image_61x32 = self.new_image_61x32()
+        while self.get_availability_of_photo("п_Настенный календарь_"):
+            if count_photo_on_61x32 == 0:
+                image_61x32 = self.new_image_61x32()
+            walpaper_img, title = self.get_not_printed_photo_with_title("п_Настенный календарь_")
             img = Image.open(walpaper_img)
-            image_61x32.paste(img, wallpaper_point[count_photo_on_61x32])
+            image_61x32.paste(img, wallpaper_point[count_photo_on_61x32][0])
+            image_61x32 = self.draw_title(image_61x32, title, wallpaper_point[count_photo_on_61x32][1])
             count_photo_on_61x32 += 1
-            image_61x32.show()
+            if count_photo_on_61x32 == 2:
+                self.save_png_image(image_61x32, self.dir_to_print + "1.png")
 
     def add_photo_to_11x32(self):
         pass
@@ -147,8 +162,7 @@ class ThreadForConvert(QtCore.QThread):
         for k, v in dict_current_photo_format.items():
             if v[2] == "not printed":
                 return True
-            else:
-                return False
+        return False
 
     def get_not_printed_photo_with_title(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
@@ -157,28 +171,26 @@ class ThreadForConvert(QtCore.QThread):
             printed_summ = v[1]
             if v[2] == "not printed":
                 img_absolute_path = k
-                title = v[3] + " " + v[0] + " " + v[4]
+                title = str(v[5]) + " " + str(v[3]) + " " + str(v[0]) + " " + str(v[4])
                 printed_summ += 1
                 v[1] = printed_summ
                 if printed_summ == photo_summ:
                     v[2] = "printed"
                 dict_current_photo_format[k] = v
                 return img_absolute_path, title
-            else:
-                continue
         return None
 
     def new_image_20x30(self):
         """Создание изображения размерами 20х30 см"""
-        return Image.new('RGB', (2657, 3780), color=(255, 255, 255), dpi=self.dpi)
+        return Image.new('RGB', (2657, 3780), color=(255, 255, 255))
 
     def new_image_61x32(self):
         """Создание изображения размерами 61х32 см"""
-        return Image.new('RGB', (7205, 3780), color=(255, 255, 255), dpi=self.dpi)
+        return Image.new('RGB', (7205, 3780), color=(255, 255, 255))
 
     def new_image_11x32(self):
         """Создаем изображение размерами 11х32 см"""
-        return Image.new('RGB', (1299, 3780), color=(255, 255, 255), dpi=self.dpi)
+        return Image.new('RGB', (1299, 3780), color=(255, 255, 255))
 
 # Функции конвертирования из psd в png и вращения фотографии
     def convert_psd_to_png(self):
@@ -253,7 +265,6 @@ class ThreadForConvert(QtCore.QThread):
             upper = 0
             right = img.width - left
             lower = img.height
-        print((left, upper, right, lower))
         return img.crop((left, upper, right, lower))
 
     def rotate_image(self, img, photo_format):
