@@ -3,6 +3,7 @@ import re
 from psd_tools import PSDImage
 from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
+import pdb
 
 
 def search_file(flExt, fldr=""):
@@ -89,6 +90,25 @@ class ThreadForConvert(QtCore.QThread):
                    "о_магнит 10х15_": (Image.ROTATE_90, 0),
                    "о_календарик 7х10_": (0, Image.ROTATE_90),
                    "_Кружка-термос с крышкой_": (Image.ROTATE_90, 0)}
+    format_weight = {"п_10х15_": 2,
+                     "п_15х20_": 4,
+                     "п_20х30_": 8,
+                     "п_магнит_": 1,
+                     "п_магнит 10х15_": 2,
+                     "о_10х15_": 2,
+                     "о_15х20_": 4,
+                     "о_20х30_": 8,
+                     "о_магнит 10х15_": 2,
+                     "о_календарик 7х10_": 1,
+                     "п_Настенный календарь_": 8,
+                     "о_Настенный календарь_": 8,
+                     "_Брелок 58_": 1,
+                     "_Зеркало 75_": 1,
+                     "_Значок 75_": 1,
+                     "_Значок 100_": 1,
+                     "_Значок 158_": 1,
+                     "_Копилка 158_": 1,
+                     "_Кружка-термос с крышкой_": 1}
     count_converted_photo = QtCore.pyqtSignal(int)
     # список имен плосских фотографий
     flat_photo_name_list = ("п_10х15_", "п_15х20_", "п_20х30_", "п_магнит_", "п_магнит 10х15_")
@@ -120,7 +140,7 @@ class ThreadForConvert(QtCore.QThread):
 
     def get_font(self):
         try:
-            font = ImageFont.truetype("Font\\CalibriBold.ttf", 50)
+            font = ImageFont.truetype("Font\\Jaguar.ttf", 50)
             return font
         except Exception as e:
             print(e)
@@ -135,13 +155,14 @@ class ThreadForConvert(QtCore.QThread):
         self.add_wallpaper_to_61x32()
 
     def add_flat_photo_to_a4(self):
-        pass
+        point = [[], [], [], [],
+                 [], [], [], []]
 
     def add_stereo_photo_to_a4(self):
         pass
 
     def add_wallpaper_to_61x32(self):
-        wallpaper_point = [[(60, 60), (240, 10)], [(2890, 60), (3640, 10)], [(5670, 60), (5700, 10)]]
+        wallpaper_point = [[(60, 60), (240, 10)], [(2890, 60), (3640, 10)], [(5670, 0), (5700, 10)]]
         count_photo_on_61x32 = 0
         while self.get_availability_of_photo("п_Настенный календарь_"):
             if count_photo_on_61x32 == 0:
@@ -152,10 +173,90 @@ class ThreadForConvert(QtCore.QThread):
             image_61x32 = self.draw_title(image_61x32, title, wallpaper_point[count_photo_on_61x32][1])
             count_photo_on_61x32 += 1
             if count_photo_on_61x32 == 2:
+                image_11x32 = self.add_photo_to_11x32()
+                image_61x32.paste(image_11x32, wallpaper_point[count_photo_on_61x32][0])
                 self.save_png_image(image_61x32, self.dir_to_print + "1.png")
+                count_photo_on_61x32 = 0
+        if count_photo_on_61x32 == 1:
+            if self.get_availability_of_photo("п_20х30_"):
+                img_path, title = self.get_not_printed_photo_with_title("п_20х30_")
+                img = Image.open(img_path)
+                image_61x32.paste(img, wallpaper_point[count_photo_on_61x32][0])
+                image_61x32 = self.draw_title(image_61x32, title, wallpaper_point[count_photo_on_61x32][1])
+        elif count_photo_on_61x32 == 0:
+            return True
 
     def add_photo_to_11x32(self):
-        pass
+        point = [[(30, 60), (30, 10)],
+                 [(30, 950), (30, 900)],
+                 [(30, 1910), (30, 1860)],
+                 [(30, 2840), (30, 2790)]]
+        places = [0, 0, 0, 0]
+        image_11x32 = self.new_image_11x32()
+        while self.get_availability_of_free_space(places, "п_магнит_"):
+            while self.get_availability_of_free_space(places, "п_магнит 10х15_"):
+                if self.get_availability_of_photo("п_магнит 10х15_"):
+                    number_of_place, new_free_places = self.get_free_place(places, "п_магнит 10х15_")
+                    img_file, title = self.get_not_printed_photo_with_title("п_магнит 10х15_")
+                    places = new_free_places
+                    img = Image.open(img_file)
+                    image_11x32.paste(img, point[number_of_place][0])
+                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+                else:
+                    break
+            while self.get_availability_of_free_space(places, "п_магнит_"):
+                if self.get_availability_of_photo("п_магнит_"):
+                    number_of_place, new_free_places = self.get_free_place(places, "п_магнит_")
+                    img_file, title = self.get_not_printed_photo_with_title("п_магнит_")
+                    places = new_free_places
+                    img = Image.open(img_file)
+                    image_11x32.paste(img, point[number_of_place][0])
+                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+                else:
+                    break
+            while self.get_availability_of_free_space(places, "п_10х15_"):
+                if self.get_availability_of_photo("п_10х15_"):
+                    number_of_place, new_free_places = self.get_free_place(places, "п_10х15_")
+                    img_file, title = self.get_not_printed_photo_with_title("п_10х15_")
+                    places = new_free_places
+                    img = Image.open(img_file)
+                    image_11x32.paste(img, point[number_of_place][0])
+                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+                else:
+                    break
+        return image_11x32
+
+    def get_free_place(self, places, photo_format):
+        """Получаем на входе массив с местами на листе и формат фотографии, который хотим
+        разместить на листе, проверяем, если в массиве, есть 0(означает, свободное место под магнит), 
+        тогда проверяем, влезет ли формат фотографии на лист, проряя сосдние места
+        К примеру, если формат фотографии, занимает 2 места, нам необходимо 2 сосдних места в массиве.
+        В качестве возращаемого результата, номер места, куда вставлять фотографию, и обновленный список мест
+        где использованные места, заняты единицей(1)"""
+        count_places = 0
+        for i in places:
+            if i == 0:
+                free_place = len(places[count_places: len(places)])  # свободное место на листе
+                if free_place >= self.format_weight[photo_format]:
+                    count = count_places
+                    take_places = count + self.format_weight[photo_format]
+                    while count < take_places:
+                        places[count] = 1
+                        count += 1
+                    return count_places, places
+            count_places += 1
+        return False
+
+    def get_availability_of_free_space(self, places, photo_format):
+        """Проверяем наличие места на листе для конкретного формата фотографии"""
+        count_places = 0
+        for i in places:
+            if i == 0:
+                free_place = len(places[count_places: len(places)])
+                if free_place >= self.format_weight[photo_format]:
+                    return True
+            count_places += 1
+        return False
 
     def get_availability_of_photo(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
