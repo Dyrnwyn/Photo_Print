@@ -4,6 +4,7 @@ from psd_tools import PSDImage
 from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
 import pdb
+import random
 
 
 def search_file(flExt, fldr=""):
@@ -153,40 +154,83 @@ class ThreadForConvert(QtCore.QThread):
 
     def add_photo_to_61x32_main(self):
         self.add_wallpaper_to_61x32()
+        self.add_flat_photo_to_61x32()
 
-    def add_flat_photo_to_a4(self):
-        point = [[], [], [], [],
-                 [], [], [], []]
-
-    def add_stereo_photo_to_a4(self):
-        pass
+    def add_flat_photo_to_61x32(self):
+        point = [(59, 0), (2421, 0), (4783, 0)]
+        count_photo_on_61x32 = 0
+        image_61x32 = self.new_image_61x32()
+        while self.get_availability_of_flat_photo():
+            image_20x32 = self.get_flat_photo_on_20x32()
+            image_61x32.paste(image_20x32, point[count_photo_on_61x32])
+            if count_photo_on_61x32 == 2:
+                self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
+                count_photo_on_61x32 = 0
+            else:
+                count_photo_on_61x32 += 1
+        self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
+        return
 
     def add_wallpaper_to_61x32(self):
-        wallpaper_point = [[(60, 60), (240, 10)], [(2890, 60), (3640, 10)], [(5670, 0), (5700, 10)]]
+        wallpaper_point = [[(60, 0), (240, 10)], [(2890, 0), (3640, 10)], [(5670, 0), (5700, 10)]]
         count_photo_on_61x32 = 0
         while self.get_availability_of_photo("п_Настенный календарь_"):
             if count_photo_on_61x32 == 0:
                 image_61x32 = self.new_image_61x32()
-            walpaper_img, title = self.get_not_printed_photo_with_title("п_Настенный календарь_")
-            img = Image.open(walpaper_img)
-            image_61x32.paste(img, wallpaper_point[count_photo_on_61x32][0])
-            image_61x32 = self.draw_title(image_61x32, title, wallpaper_point[count_photo_on_61x32][1])
+            wlp_img = self.add_calendar_to_225x320()
+            image_61x32.paste(wlp_img, wallpaper_point[count_photo_on_61x32][0])
             count_photo_on_61x32 += 1
             if count_photo_on_61x32 == 2:
-                image_11x32 = self.add_photo_to_11x32()
+                image_11x32 = self.get_photo_on_11x32()
                 image_61x32.paste(image_11x32, wallpaper_point[count_photo_on_61x32][0])
-                self.save_png_image(image_61x32, self.dir_to_print + "1.png")
+                self.save_png_image(image_61x32, self.dir_to_print + str(random.randint(1, 10000)) + ".png")
                 count_photo_on_61x32 = 0
         if count_photo_on_61x32 == 1:
-            if self.get_availability_of_photo("п_20х30_"):
-                img_path, title = self.get_not_printed_photo_with_title("п_20х30_")
-                img = Image.open(img_path)
+            if self.get_availability_of_flat_photo():
+                img = self.get_flat_photo_on_20x32()
                 image_61x32.paste(img, wallpaper_point[count_photo_on_61x32][0])
-                image_61x32 = self.draw_title(image_61x32, title, wallpaper_point[count_photo_on_61x32][1])
-        elif count_photo_on_61x32 == 0:
-            return True
+                count_photo_on_61x32 += 1
+        if count_photo_on_61x32 == 2:
+            image_11x32 = self.get_photo_on_11x32()
+            image_61x32.paste(image_11x32, wallpaper_point[count_photo_on_61x32][0])
+            self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + ".png")
+            count_photo_on_61x32 = 0
+        if count_photo_on_61x32 == 0:
+            return
 
-    def add_photo_to_11x32(self):
+    def add_calendar_to_225x320(self):
+        walpaper_img, title = self.get_not_printed_photo_with_title("п_Настенный календарь_")
+        img = Image.open(walpaper_img)
+        img_225x320 = self.new_image_225x320()
+        top = round((img_225x320.height - img.height) / 2)
+        img_225x320.paste(img, (0, top))
+        img_225x320 = self.draw_title(img_225x320, title, (0, 10))
+        return img_225x320
+
+    def get_flat_photo_on_20x32(self):
+        photo_format_list = ("п_20х30_", "п_15х20_", "п_10х15_", "п_магнит 10х15_", "п_магнит_")
+        point = [[(0, 118), (0, 76)], [(0, 1024), (0, 974)],
+                 [(1181, 118), (1181, 76)], [(1181, 1024), (1181, 974)],
+                 [(0, 1952), (0, 1902)], [(0, 2890), (0, 2840)],
+                 [(1181, 1952), (1181, 1902)], [(1181, 2890), (1181, 2840)]]
+        places = [0, 0, 0, 0,
+                  0, 0, 0, 0]
+        img20x32 = self.new_image_20x32()
+        for photo_format in photo_format_list:
+            while self.get_availability_of_photo(photo_format):
+                if self.get_availability_of_free_space(places, photo_format):
+                    number_of_place, new_free_places = self.get_free_place(places, photo_format)
+                    places = new_free_places
+                    img_file, title = self.get_not_printed_photo_with_title(photo_format)
+                    img = Image.open(img_file)
+                    img20x32.paste(img, point[number_of_place][0])
+                    img20x32 = self.draw_title(img20x32, title, point[number_of_place][1])
+                else:
+                    break
+            continue
+        return img20x32
+
+    def get_photo_on_11x32(self):
         point = [[(30, 60), (30, 10)],
                  [(30, 950), (30, 900)],
                  [(30, 1910), (30, 1860)],
@@ -258,6 +302,13 @@ class ThreadForConvert(QtCore.QThread):
             count_places += 1
         return False
 
+    def get_availability_of_flat_photo(self):
+        flat_photo = ["п_10х15_", "п_15х20_", "п_20х30_", "п_магнит_", "п_магнит 10х15_"]
+        for f in flat_photo:
+            if self.get_availability_of_photo(f):
+                return True
+        return False
+
     def get_availability_of_photo(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
         for k, v in dict_current_photo_format.items():
@@ -281,9 +332,9 @@ class ThreadForConvert(QtCore.QThread):
                 return img_absolute_path, title
         return None
 
-    def new_image_20x30(self):
-        """Создание изображения размерами 20х30 см"""
-        return Image.new('RGB', (2657, 3780), color=(255, 255, 255))
+    def new_image_20x32(self):
+        """Создание изображения размерами 20х32 см"""
+        return Image.new('RGB', (2362, 3780), color=(255, 255, 255))
 
     def new_image_61x32(self):
         """Создание изображения размерами 61х32 см"""
@@ -292,6 +343,10 @@ class ThreadForConvert(QtCore.QThread):
     def new_image_11x32(self):
         """Создаем изображение размерами 11х32 см"""
         return Image.new('RGB', (1299, 3780), color=(255, 255, 255))
+
+    def new_image_225x320(self):
+        """Создаем изображение размерами 11х32 см"""
+        return Image.new('RGB', (2657, 3780), color=(255, 255, 255))
 
 # Функции конвертирования из psd в png и вращения фотографии
     def convert_psd_to_png(self):
