@@ -141,10 +141,11 @@ class ThreadForConvert(QtCore.QThread):
 
     def get_font(self):
         try:
-            font = ImageFont.truetype("Font\\Jaguar.ttf", 50)
+            font = ImageFont.truetype("C:\\Windows\\Fonts\\Jaguar.ttf", 50)
             return font
-        except Exception as e:
-            print(e)
+        except Exception:
+            font = ImageFont.truetype("Fonts\\Jaguar.ttf", 50)
+            return font
 
     def draw_title(self, img, text, point):
         font = self.get_font()
@@ -166,9 +167,11 @@ class ThreadForConvert(QtCore.QThread):
             if count_photo_on_61x32 == 2:
                 self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
                 count_photo_on_61x32 = 0
+                image_61x32 = self.new_image_61x32()
             else:
                 count_photo_on_61x32 += 1
-        self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
+        if count_photo_on_61x32 != 0:
+            self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
         return
 
     def add_wallpaper_to_61x32(self):
@@ -427,9 +430,12 @@ class ThreadForConvert(QtCore.QThread):
         """Разворачиваем фотографию на 90 градусов
         только в том случае, если ширина больше высоты"""
         if img.width > img.height:
-            return img.transpose(self.rotate_dict[photo_format][0])
+            if self.rotate_dict[photo_format][0] != 0:
+                return img.transpose(self.rotate_dict[photo_format][0])
         elif img.width < img.height:
-            return img.transpose(self.rotate_dict[photo_format][1])
+            if self.rotate_dict[photo_format][1] != 0:
+                return img.transpose(self.rotate_dict[photo_format][1])
+        return img
 
     def resize_image(self, img, photo_format):
         """Меняем размер изображений, размеры хранятся в словаре
