@@ -3,8 +3,8 @@ import re
 from psd_tools import PSDImage
 from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
-import pdb
 import random
+import datetime
 
 
 def search_file(flExt, fldr=""):
@@ -131,6 +131,12 @@ class ThreadForConvert(QtCore.QThread):
         self.convert_psd_to_png()
         self.add_photo_to_61x32_main()
 
+    def add_photo_to_61x32_main(self):
+        self.add_wallpaper_to_61x32()
+        self.add_flat_photo_to_61x32()
+        self.add_cup_to_210x197()
+        #  self.add_badge_to_210x197_main()
+
     def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print):
         """Устанавливаем значения переменных
         разрешение фотографии dpi, словарь psd файлов, путь к папке для еконвертации в png"""
@@ -140,11 +146,11 @@ class ThreadForConvert(QtCore.QThread):
         self.dir_to_print = dir_to_print
 
     def get_font(self):
-        try:
-            font = ImageFont.truetype("C:\\Windows\\Fonts\\Jaguar.ttf", 50)
+        try: 
+            font = ImageFont.truetype("C:\\Windows\\Fonts\\Jaguar.ttf", 48)
             return font
         except Exception:
-            font = ImageFont.truetype("Fonts\\Jaguar.ttf", 50)
+            font = ImageFont.truetype("Fonts\\Jaguar.ttf", 48)
             return font
 
     def draw_title(self, img, text, point):
@@ -153,9 +159,32 @@ class ThreadForConvert(QtCore.QThread):
         draw_text.text(point, text, font=font, fill=(0, 0, 0))
         return img
 
-    def add_photo_to_61x32_main(self):
-        self.add_wallpaper_to_61x32()
-        self.add_flat_photo_to_61x32()
+    def add_cup_to_210x197(self):
+        photo_format = "_Кружка-термос с крышкой_"
+        point = [[(75, 160), (20, 15)], [(1265, 160), (1000, 65)]]
+        count_photo_on_210x297 = 0
+        image_210x297 = self.new_image_210x297()
+        while self.get_availability_of_photo(photo_format):
+            if count_photo_on_210x297 == 2:
+                self.save_png_image(image_210x297, self.dir_to_print + "cup_" + str(
+                                    self.get_time_for_filename()) + '.png')
+                image_210x297 = self.new_image_210x297()
+                count_photo_on_210x297 = 0
+            image, title = self.get_not_printed_photo_with_title(photo_format)
+            image_cup = Image.open(image)
+            image_210x297.paste(image_cup, point[count_photo_on_210x297][0])
+            image_210x297 = self.draw_title(image_210x297, title, point[count_photo_on_210x297][1])
+            count_photo_on_210x297 += 1
+        if count_photo_on_210x297 != 0:
+            self.save_png_image(image_210x297, self.dir_to_print + "cup_" + str(self.get_time_for_filename()) + '.png')
+        return
+
+    def add_badge_to_210x197_main(self):
+        photo_format = "_Копилка 158_"
+        while self.get_availability_of_photo(photo_format):
+            img, title = self.get_not_printed_photo_with_title(photo_format)
+            badge_img = Image.open(img)
+            print(badge_img.getbbox())
 
     def add_flat_photo_to_61x32(self):
         point = [(59, 0), (2421, 0), (4783, 0)]
@@ -165,13 +194,13 @@ class ThreadForConvert(QtCore.QThread):
             image_20x32 = self.get_flat_photo_on_20x32()
             image_61x32.paste(image_20x32, point[count_photo_on_61x32])
             if count_photo_on_61x32 == 2:
-                self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
+                self.save_png_image(image_61x32, self.dir_to_print + str(self.get_time_for_filename()) + '.png')
                 count_photo_on_61x32 = 0
                 image_61x32 = self.new_image_61x32()
             else:
                 count_photo_on_61x32 += 1
         if count_photo_on_61x32 != 0:
-            self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + '.png')
+            self.save_png_image(image_61x32, self.dir_to_print + str(self.get_time_for_filename()) + '.png')
         return
 
     def add_wallpaper_to_61x32(self):
@@ -186,17 +215,19 @@ class ThreadForConvert(QtCore.QThread):
             if count_photo_on_61x32 == 2:
                 image_11x32 = self.get_photo_on_11x32()
                 image_61x32.paste(image_11x32, wallpaper_point[count_photo_on_61x32][0])
-                self.save_png_image(image_61x32, self.dir_to_print + str(random.randint(1, 10000)) + ".png")
+                self.save_png_image(image_61x32, self.dir_to_print + str(self.get_time_for_filename()) + ".png")
                 count_photo_on_61x32 = 0
         if count_photo_on_61x32 == 1:
             if self.get_availability_of_flat_photo():
                 img = self.get_flat_photo_on_20x32()
                 image_61x32.paste(img, wallpaper_point[count_photo_on_61x32][0])
                 count_photo_on_61x32 += 1
+            else:
+                count_photo_on_61x32 += 1
         if count_photo_on_61x32 == 2:
             image_11x32 = self.get_photo_on_11x32()
             image_61x32.paste(image_11x32, wallpaper_point[count_photo_on_61x32][0])
-            self.save_png_image(image_61x32, self.dir_to_print + str((random.randint(1, 10000))) + ".png")
+            self.save_png_image(image_61x32, self.dir_to_print + str(self.get_time_for_filename()) + ".png")
             count_photo_on_61x32 = 0
         if count_photo_on_61x32 == 0:
             return
@@ -212,16 +243,24 @@ class ThreadForConvert(QtCore.QThread):
 
     def get_flat_photo_on_20x32(self):
         photo_format_list = ("п_20х30_", "п_15х20_", "п_10х15_", "п_магнит 10х15_", "п_магнит_")
-        point = [[(0, 118), (0, 76)], [(0, 1024), (0, 974)],
-                 [(1181, 118), (1181, 76)], [(1181, 1024), (1181, 974)],
-                 [(0, 1952), (0, 1902)], [(0, 2890), (0, 2840)],
-                 [(1181, 1952), (1181, 1902)], [(1181, 2890), (1181, 2840)]]
+        # point = [[(0, 118), (0, 76)], [(0, 1024), (0, 974)],
+        #          [(1181, 118), (1181, 76)], [(1181, 1024), (1181, 974)],
+        #          [(0, 1952), (0, 1902)], [(0, 2890), (0, 2840)],
+        #          [(1181, 1952), (1181, 1902)], [(1181, 2890), (1181, 2840)]]
+        point = [[(0, 117), (0, 70)], [(0, 1024), (0, 974)],
+                 [(1181, 117), (1181, 70)], [(1181, 1024), (1181, 974)],
+                 [(0, 117), (0, 70)], [(0, 1024), (0, 974)],
+                 [(1181, 117), (1181, 70)], [(1181, 1024), (1181, 974)]]
         places = [0, 0, 0, 0,
                   0, 0, 0, 0]
+        places_when_rotate = [1, 1, 1, 1,
+                              0, 0, 0, 0]
         img20x32 = self.new_image_20x32()
         for photo_format in photo_format_list:
             while self.get_availability_of_photo(photo_format):
                 if self.get_availability_of_free_space(places, photo_format):
+                    if places == places_when_rotate:
+                        img20x32 = img20x32.transpose(Image.ROTATE_180)
                     number_of_place, new_free_places = self.get_free_place(places, photo_format)
                     places = new_free_places
                     img_file, title = self.get_not_printed_photo_with_title(photo_format)
@@ -240,37 +279,36 @@ class ThreadForConvert(QtCore.QThread):
                  [(30, 2840), (30, 2790)]]
         places = [0, 0, 0, 0]
         image_11x32 = self.new_image_11x32()
+        while self.get_availability_of_free_space(places, "п_магнит 10х15_"):
+            if self.get_availability_of_photo("п_магнит 10х15_"):
+                number_of_place, new_free_places = self.get_free_place(places, "п_магнит 10х15_")
+                img_file, title = self.get_not_printed_photo_with_title("п_магнит 10х15_")
+                places = new_free_places
+                img = Image.open(img_file)
+                image_11x32.paste(img, point[number_of_place][0])
+                image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+            else:
+                break
         while self.get_availability_of_free_space(places, "п_магнит_"):
-            while self.get_availability_of_free_space(places, "п_магнит 10х15_"):
-                if self.get_availability_of_photo("п_магнит 10х15_"):
-                    number_of_place, new_free_places = self.get_free_place(places, "п_магнит 10х15_")
-                    img_file, title = self.get_not_printed_photo_with_title("п_магнит 10х15_")
-                    places = new_free_places
-                    img = Image.open(img_file)
-                    image_11x32.paste(img, point[number_of_place][0])
-                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
-                else:
-                    break
-            while self.get_availability_of_free_space(places, "п_магнит_"):
-                if self.get_availability_of_photo("п_магнит_"):
-                    number_of_place, new_free_places = self.get_free_place(places, "п_магнит_")
-                    img_file, title = self.get_not_printed_photo_with_title("п_магнит_")
-                    places = new_free_places
-                    img = Image.open(img_file)
-                    image_11x32.paste(img, point[number_of_place][0])
-                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
-                else:
-                    break
-            while self.get_availability_of_free_space(places, "п_10х15_"):
-                if self.get_availability_of_photo("п_10х15_"):
-                    number_of_place, new_free_places = self.get_free_place(places, "п_10х15_")
-                    img_file, title = self.get_not_printed_photo_with_title("п_10х15_")
-                    places = new_free_places
-                    img = Image.open(img_file)
-                    image_11x32.paste(img, point[number_of_place][0])
-                    image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
-                else:
-                    break
+            if self.get_availability_of_photo("п_магнит_"):
+                number_of_place, new_free_places = self.get_free_place(places, "п_магнит_")
+                img_file, title = self.get_not_printed_photo_with_title("п_магнит_")
+                places = new_free_places
+                img = Image.open(img_file)
+                image_11x32.paste(img, point[number_of_place][0])
+                image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+            else:
+                break
+        while self.get_availability_of_free_space(places, "п_10х15_"):
+            if self.get_availability_of_photo("п_10х15_"):
+                number_of_place, new_free_places = self.get_free_place(places, "п_10х15_")
+                img_file, title = self.get_not_printed_photo_with_title("п_10х15_")
+                places = new_free_places
+                img = Image.open(img_file)
+                image_11x32.paste(img, point[number_of_place][0])
+                image_11x32 = self.draw_title(image_11x32, title, point[number_of_place][1])
+            else:
+                break
         return image_11x32
 
     def get_free_place(self, places, photo_format):
@@ -304,6 +342,10 @@ class ThreadForConvert(QtCore.QThread):
                     return True
             count_places += 1
         return False
+
+    def get_time_for_filename(self):
+        x = datetime.datetime.now()
+        return x.strftime("%d-%b %H_%M_%S_%f")
 
     def get_availability_of_flat_photo(self):
         flat_photo = ["п_10х15_", "п_15х20_", "п_20х30_", "п_магнит_", "п_магнит 10х15_"]
@@ -350,6 +392,10 @@ class ThreadForConvert(QtCore.QThread):
     def new_image_225x320(self):
         """Создаем изображение размерами 11х32 см"""
         return Image.new('RGB', (2657, 3780), color=(255, 255, 255))
+
+    def new_image_210x297(self):
+        """Создаем изображение размерами 11х32 см"""
+        return Image.new('RGB', (2480, 3508), color=(255, 255, 255))
 
 # Функции конвертирования из psd в png и вращения фотографии
     def convert_psd_to_png(self):
@@ -412,18 +458,36 @@ class ThreadForConvert(QtCore.QThread):
 
     def crop_image(self, img, ratio):
         """Образаем фотографию с необходимым соотношение ширины к длинне"""
-        if img.width > img.height:   # опеределяем горизонтальную фотографию
-            new_width = round(img.height * ratio)
-            left = round((img.width - new_width) / 2)
-            upper = 0
-            right = img.width - left
-            lower = img.height
-        elif img.width < img.height:  # опеределяем вертикальную фотографию
-            new_width = round(img.height / ratio)
-            left = round((img.width - new_width) / 2)
-            upper = 0
-            right = img.width - left
-            lower = img.height
+        calc_height = img.width * ratio
+        calc_width = img.height * ratio
+        img_height = img.height
+        img_width = img.width
+        if img_width > img_height:   # опеределяем горизонтальную фотографию
+            if calc_width > img_width:
+                new_height = round(img_width / ratio)
+                upper = round((img_height - new_height) / 2)
+                left = 0
+                lower = img_height - upper
+                right = img_width
+            else:
+                new_width = round(img_height * ratio)
+                left = round((img_width - new_width) / 2)
+                upper = 0
+                right = img_width - left
+                lower = img_height
+        elif img_width < img_height:  # опеределяем вертикальную фотографию
+            if calc_height > img_height:
+                new_width = round(img_height / ratio)
+                left = round((img_width - new_width) / 2)
+                upper = 0
+                right = img_width - left
+                lower = img_height
+            else:
+                new_height = round(img_width * ratio)
+                upper = round((img_height - new_height) / 2)
+                left = 0
+                lower = img_height - upper
+                right = img_width
         return img.crop((left, upper, right, lower))
 
     def rotate_image(self, img, photo_format):
