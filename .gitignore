@@ -5,6 +5,7 @@
 /include/*
 /lib/*
 /share/*
+/alpha0.1/*
 *SystemDrive*
 lib64
 pyvenv.cfg

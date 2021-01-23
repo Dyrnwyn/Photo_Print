@@ -111,6 +111,7 @@ class ThreadForConvert(QtCore.QThread):
                      "_Копилка 158_": 1,
                      "_Кружка-термос с крышкой_": 1}
     count_converted_photo = QtCore.pyqtSignal(int)
+    messages_what_work = QtCore.pyqtSignal(str)
     # список имен плосских фотографий
     flat_photo_name_list = ("п_10х15_", "п_15х20_", "п_20х30_", "п_магнит_", "п_магнит 10х15_")
     # список имен плосских фотографий
@@ -121,8 +122,10 @@ class ThreadForConvert(QtCore.QThread):
     cup_name_list = ("_Кружка-термос с крышкой_")
     dpi = (300, 300)
     dict_of_psd_files = {}
-    dir_for_png = 'C:\\Объекты\\print_photo_png'
+    dir_for_png = 'C:\\Объекты\\print_photo_png\\tmp\\'
     dir_to_print = 'C:\\Объекты\\print_photo_png\\В печать\\'
+    list_to_print_on_210x297 = []
+    list_to_print_on_610x320 = []
 
     def __init__(self):
         QtCore.QThread.__init__(self)
@@ -137,16 +140,20 @@ class ThreadForConvert(QtCore.QThread):
         self.add_cup_to_210x197()
         #  self.add_badge_to_210x197_main()
 
-    def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print):
+    def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print,
+                list_to_print_on_210x297=[],
+                list_to_print_on_610x320=[]):
         """Устанавливаем значения переменных
         разрешение фотографии dpi, словарь psd файлов, путь к папке для еконвертации в png"""
         self.photo_dpi = dpi
         self.dict_of_psd_files = psd_dict
         self.dir_for_png = dir_for_png
         self.dir_to_print = dir_to_print
+        self.list_to_print_on_210x297 = list_to_print_on_210x297
+        self.list_to_print_on_610x320 = list_to_print_on_610x320
 
     def get_font(self):
-        try: 
+        try:
             font = ImageFont.truetype("C:\\Windows\\Fonts\\Jaguar.ttf", 48)
             return font
         except Exception:
@@ -344,7 +351,7 @@ class ThreadForConvert(QtCore.QThread):
         return False
 
     def get_time_for_filename(self):
-        x = datetime.datetime.now()
+        x = datetime.datetimedc7.now()
         return x.strftime("%d-%b %H_%M_%S_%f")
 
     def get_availability_of_flat_photo(self):
@@ -399,20 +406,25 @@ class ThreadForConvert(QtCore.QThread):
 
 # Функции конвертирования из psd в png и вращения фотографии
     def convert_psd_to_png(self):
+        self.messages_what_work.emit("Конвертирую файлы в png")
         count = 0
-        for k, v in self.dict_of_psd_files.items():
-            current_object = os.path.split(k)[1]
+        for object_path, files in self.dict_of_psd_files.items():
+            print(files)
+            current_object = os.path.split(object_path)[1]
             path_for_png = self.dir_for_png + '\\' + current_object
-            for file in v:
-                psd_file = PSDImage.open(k + '\\' + file)  # открываем psd файл
+            for file_name, attribute in files.items():
+                psd_file = PSDImage.open(object_path + '\\' + file_name)  # открываем psd файл
                 img = psd_file.composite()  # сливаем слои, и получаем изображение типа PIL
                 # из имени файла, получаем формат фотографии
-                photo_format = file.split("_")[0] + "_" + file.split("_")[1] + "_"  # формат фотографии
-                children_photo = file.split("_")[3]  # номер фотографии ребенка
-                photo_summ = file.split("_")[4]  # получаем колиство изделий с кадра
-                ratio = self.get_ratio(file)  # получаем соотношения сторон
-                png_file_name = self.change_format_file_name(file, path_for_png)  # получаем имя png файла, включая путь
-                self.add_to_dict_of_photo_png(photo_format, photo_summ, png_file_name, current_object, children_photo)
+                photo_format = attribute["Вид фото"] + "_" + attribute["Формат фото"] + "_"  # формат фотографии
+                children_photo = attribute["Фото ребенка"]  # номер фотографии ребенка
+                photo_summ = attribute["Количество"]  # получаем колиство изделий с кадра
+                group = attribute["Класс"]
+                ratio = self.get_ratio(file_name)  # получаем соотношения сторон
+                # получаем имя png файла, включая путь
+                png_file_name = self.change_format_file_name(file_name, path_for_png)
+                self.add_to_dict_of_photo_png(photo_format, photo_summ, png_file_name,
+                                              current_object, children_photo, group)
                 if photo_format in self.flat_photo_name_list:
                     cropped_img = self.crop_image(img, ratio)
                     resized_img = self.resize_image(cropped_img, photo_format)
@@ -439,9 +451,9 @@ class ThreadForConvert(QtCore.QThread):
                 del psd_file
                 del img
 
-    def add_to_dict_of_photo_png(self, photo_format, photo_summ, png_file_name, current_object, children_photo):
+    def add_to_dict_of_photo_png(self, photo_format, photo_summ, png_file_name, current_object, children_photo, group):
         """ изменяем словарь выбранного формата, добавляем в него фотографию,
-        вида {абсолютный путь к png фото : [photo_summ, 0, 'not printed', photo_format, children_photo, 
+        вида {абсолютный путь к png фото : [photo_summ, 0, 'not printed', photo_format, children_photo,
         current_object]}
         где:
         photo_summ - количество изделий, которое необходимо сделать
@@ -452,8 +464,13 @@ class ThreadForConvert(QtCore.QThread):
         current_object - Объект к которому принадлежит изделие
         """
         dict_png_of_current_photo_format = self.dict_of_photo_png[photo_format]
-        dict_png_of_current_photo_format[png_file_name] = [photo_summ, 0, 'not printed',
-                                                           photo_format, children_photo, current_object]
+        dict_png_of_current_photo_format[png_file_name] = {"Количество": photo_summ,
+                                                           "Количество напечатанных": 0,
+                                                           "Напечатанно": 'not printed',
+                                                           "Формат фото": photo_format,
+                                                           "Фото ребенка": children_photo,
+                                                           "Класс": group,
+                                                           "Объект": current_object}
         self.dict_of_photo_png[photo_format] = dict_png_of_current_photo_format
 
     def crop_image(self, img, ratio):
