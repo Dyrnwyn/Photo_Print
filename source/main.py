@@ -23,7 +23,8 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
                 "п_магнит 10х15_": '',
                 "п_Настенный календарь_": '',
                 "Директория объектов": '',
-                "Директория временных файлов": ''}
+                "Директория временных файлов": '',
+                "Шрифт": ''}
     dir_for_png = settings["Директория временных файлов"]
     dir_to_print = settings["Директория объектов"]
     progress_bar_maximum = 0
@@ -57,6 +58,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.clearButton.clicked.connect(self.clear_selected_photo)
         self.toolButton_folderForFinishFoto.clicked.connect(self.choise_folder_for_finished_foto)
         self.toolButton_tmpFolder.clicked.connect(self.choise_tmp_folder)
+        self.toolButton_Font.clicked.connect(self.choise_font)
         self.tableWidget.setRowCount(500)  # устанавливаем количество строк в 500
         self.tableWidget.doubleClicked.connect(self.choise_foto_size)
         self.convert_psd_to_png_thread = ThreadForConvert()
@@ -66,6 +68,11 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.convert_psd_to_png_thread.messages_what_work.connect(self.on_change_convert_set_label,
                                                                   QtCore.Qt.QueuedConnection)
         self.setPushButtonSave.clicked.connect(self.save_settings)
+        self.name_settings_directory = 'Настройки'
+        self.settings_directory = os.path.dirname(__file__) + os.sep + self.name_settings_directory + os.sep
+        if not os.path.exists(self.settings_directory):
+            os.mkdir(self.settings_directory)
+            self.save_settings()
         self.load_settings()
 
     def save_settings(self):
@@ -91,29 +98,28 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
             self.settings["Директория временных файлов"] = self.lineeditTmpFolder.placeholderText()
         else:
             self.settings["Директория временных файлов"] = self.lineeditTmpFolder.text()
+        if self.lineeditFont.text() == '':
+            self.settings["Шрифт"] = self.lineeditFont.placeholderText()
+        else:
+            self.settings["Шрифт"] = self.lineeditFont.text()
         json_txt = json.dumps(self.settings)
-        settings_file = open('settings.txt', 'w')
+        settings_file = open(self.settings_directory + 'settings.conf', 'w')
         settings_file.write(json_txt)
         settings_file.close()
         self.change_list_to_print_from_settings()
 
     def load_settings(self):
         json_text = ''
-        try:
-            settings_file = open('settings.txt', 'r')
-            json_text = settings_file.read()
-            settings_file.close()
-        except Exception:
-            self.show_message_box("Ошибка файла настроек",
-                                  "Файл настроек не обнаружен. Необходимо провести первичную настройку программы")
+        if not os.path.isfile(self.settings_directory + 'settings.conf'):
+            self.save_settings()
+        settings_file = open(self.settings_directory + 'settings.conf', 'r')
+        json_text = settings_file.read()
+        settings_file.close()
         error_in_settings = False
         if json_text != '':
             settings = json.loads(json_text)
             for k, v in self.settings.items():
-                try:
-                    self.settings[k] = settings[k]
-                except Exception:
-                    error_in_settings = True
+                 self.settings[k] = settings[k]
             if self.settings["п_10х15_"] == '210x297':
                 self.set_radioButton_10x15_210x297.setChecked(True)
             else:
@@ -140,12 +146,14 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
                 self.set_radioButton_magnit10x15_610x320.setChecked(True)
             self.lineeditFolderFinishedFoto.setText(self.settings["Директория объектов"])
             self.lineeditTmpFolder.setText(self.settings["Директория временных файлов"])
+            self.lineeditFont.setText(self.settings["Шрифт"])
             if error_in_settings:
                 self.show_message_box("Ошибка файла настроек",
                                       "В файле настроек обнаружена ошибка, необходимо проверить настройки")
         self.change_list_to_print_from_settings()
 
-    def show_message_box(self, title_text, message_text):
+    @staticmethod
+    def show_message_box(title_text, message_text):
         msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                         title_text, message_text,
                                         buttons=QtWidgets.QMessageBox.Ok)
@@ -193,11 +201,16 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
     def convert_psd_to_png(self):
         """Запускаем поток конвертирования и формирования файлов для печати
         Сначала устанавливаем переменные, далее запускаем поток"""
-        self.convert_psd_to_png_thread.set_var(self.photo_dpi, self.dict_of_psd_files, self.dir_for_png,
-                                               self.dir_to_print, self.list_to_print_on_210x297,
-                                               self.list_to_print_on_610x320)
+        self.convert_psd_to_png_thread.set_var(self.photo_dpi, self.dict_of_psd_files,
+                                               self.settings['Директория временных файлов'],
+                                               self.settings['Директория объектов'], self.list_to_print_on_210x297,
+                                               self.list_to_print_on_610x320,
+                                               self.settings['Шрифт'],
+                                               self.get_object())
         self.convert_psd_to_png_thread.start()
 
+    def get_object(self):
+        return self.tableWidget.item(0, 3).text()
     def count_amount_of_photo(self, file_name):
         """Подсчет количества фотографий каждого формата"""
         for k, v in self.count_photo.items():   # находим в файле количество в печать
@@ -233,15 +246,15 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         try:
             vid_foto = file.split("_")[0]
             foto_type = file.split("_")[1]
-            summ_foto = file.split("_")[4]
+            sum_foto = file.split("_")[4]
         except Exception:
             vid_foto = '"п'
             foto_type = "10x15"
-            summ_foto = "1"
+            sum_foto = "1"
         if vid_foto != "о":
             self.tableWidget.setItem(self.row_count, 0, QtWidgets.QTableWidgetItem(file))
             self.tableWidget.setItem(self.row_count, 1, QtWidgets.QTableWidgetItem(foto_type))
-            self.tableWidget.setItem(self.row_count, 2, QtWidgets.QTableWidgetItem(summ_foto))
+            self.tableWidget.setItem(self.row_count, 2, QtWidgets.QTableWidgetItem(sum_foto))
             self.tableWidget.setItem(self.row_count, 3, QtWidgets.QTableWidgetItem(file_object))
             self.tableWidget.setItem(self.row_count, 4, QtWidgets.QTableWidgetItem(directory))
             self.count_amount_of_photo(file)
@@ -255,7 +268,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
             path_to_file = self.tableWidget.item(count_row, 4).text()
             file_name = self.tableWidget.item(count_row, 0).text()
             foto_format = self.tableWidget.item(count_row, 1).text()
-            summ_foto = self.tableWidget.item(count_row, 2).text()
+            sum_foto = self.tableWidget.item(count_row, 2).text()
             object_of_foto = self.tableWidget.item(count_row, 3).text()
             try:
                 group = file_name.split("_")[5]
@@ -268,11 +281,9 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
             if path_to_file not in dict_of_psd_file:
                 dict_of_psd_file[path_to_file] = {}
             file_dict = dict_of_psd_file[path_to_file]
-            file_dict[file_name] = {"Формат фото": foto_format, "Количество": summ_foto,
+            file_dict[file_name] = {"Формат фото": foto_format, "Количество": sum_foto,
                                     "Объект": object_of_foto, "Класс": group, "Вид фото": vid_foto,
                                     "Фото ребенка": children_foto}
-            #list_of_files = dict_of_psd_file[path_to_file]
-            #list_of_files.append(file_dict)
             count_row += 1
         progress_bar_maximum = count_row  # получаем количество фотографий для индикатора хода процесса
         return dict_of_psd_file
@@ -294,11 +305,11 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         описана в переменной dir_for_png"""
         try:
             os.mkdir(self.dir_for_png)
-            os.mkdir(self.dir_for_png + '\\' + self.name_dir_to_print)
+            os.mkdir(self.dir_for_png + os.sep + self.name_dir_to_print)
         except Exception:
             pass
         for k, v in dict_of_psd_files.items():
-            directory_object = self.dir_for_png + '\\' + os.path.split(k)[1]
+            directory_object = self.dir_for_png + os.sep + os.path.split(k)[1]
             try:
                 os.mkdir(directory_object)
             except Exception:
@@ -366,6 +377,9 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку")
         return str(directory)
 
+    def choise_font(self):
+        font_file = QtWidgets.QFileDialog.getOpenFileName(self, "Выберите шрифт")
+        self.lineeditFont.setText(str(font_file[0]))
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

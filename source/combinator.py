@@ -3,8 +3,8 @@ import re
 from psd_tools import PSDImage
 from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
-import random
 import datetime
+import platform
 
 
 def search_file(flExt, fldr=""):
@@ -120,13 +120,22 @@ class ThreadForConvert(QtCore.QThread):
     wall_calendar_name_list = ("п_Настенный календарь_", "о_Настенный календарь_")
     badge_name_list = ("_Брелок 58_", "_Зеркало 75_", "_Значок 75_", "_Значок 100_", "_Значок 158_", "_Копилка 158_")
     cup_name_list = ("_Кружка-термос с крышкой_")
-    dpi = (300, 300)
+    dpi = ""
     dict_of_psd_files = {}
-    dir_for_png = 'C:\\Объекты\\print_photo_png\\tmp\\'
-    dir_to_print = 'C:\\Объекты\\print_photo_png\\В печать\\'
+    dir_for_png = ''
+    dir_to_print = ''
     list_to_print_on_210x297 = []
     list_to_print_on_610x320 = []
-
+    font_file = ""
+    sizes_foto = {
+        "210x297": {"ColorSpace": 'RGB', "Size": (2480, 3508), "Color": (255, 255, 255)},
+        "225x320": {"ColorSpace": 'RGB', "Size": (2657, 3780), "Color": (255, 255, 255)},
+        "110x320": {"ColorSpace": 'RGB', "Size": (1299, 3780), "Color": (255, 255, 255)},
+        "200x320": {"ColorSpace": 'RGB', "Size": (2362, 3780), "Color": (255, 255, 255)},
+        "610x320": {"ColorSpace": 'RGB', "Size": (7205, 3780), "Color": (255, 255, 255)},
+    }
+    current_object = ""
+    dir_for_save_complete_file = ""
     def __init__(self):
         QtCore.QThread.__init__(self)
 
@@ -134,32 +143,36 @@ class ThreadForConvert(QtCore.QThread):
         self.convert_psd_to_png()
         self.add_photo_to_61x32_main()
 
+    def get_font(self):
+        font = ImageFont.truetype(self.font_file, 48)
+        return font
+
     def add_photo_to_61x32_main(self):
         self.add_wallpaper_to_61x32()
-        self.add_flat_photo_to_61x32()
+        self.add_flat_photo_225x320_to_61x32()
         self.add_cup_to_210x197()
         #  self.add_badge_to_210x197_main()
 
     def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print,
                 list_to_print_on_210x297=[],
-                list_to_print_on_610x320=[]):
+                list_to_print_on_610x320=[], font_file="",
+                current_object=""):
         """Устанавливаем значения переменных
         разрешение фотографии dpi, словарь psd файлов, путь к папке для еконвертации в png"""
-        self.photo_dpi = dpi
+        self.dpi = dpi
         self.dict_of_psd_files = psd_dict
         self.dir_for_png = dir_for_png
         self.dir_to_print = dir_to_print
         self.list_to_print_on_210x297 = list_to_print_on_210x297
         self.list_to_print_on_610x320 = list_to_print_on_610x320
+        self.font_file = font_file
+        self.current_object = current_object
+        self.dir_for_save_complete_file = self.dir_to_print + os.sep + self.current_object + os.sep
+        self.check_exists_dir(self.dir_to_print + os.sep + self.current_object)
 
-    def get_font(self):
-        try:
-            font = ImageFont.truetype("C:\\Windows\\Fonts\\Jaguar.ttf", 48)
-            return font
-        except Exception:
-            font = ImageFont.truetype("Fonts\\Jaguar.ttf", 48)
-            return font
-
+    def check_exists_dir(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
     def draw_title(self, img, text, point):
         font = self.get_font()
         draw_text = ImageDraw.Draw(img)
@@ -170,12 +183,12 @@ class ThreadForConvert(QtCore.QThread):
         photo_format = "_Кружка-термос с крышкой_"
         point = [[(75, 160), (20, 15)], [(1265, 160), (1000, 65)]]
         count_photo_on_210x297 = 0
-        image_210x297 = self.new_image_210x297()
+        image_210x297 = self.new_image("210x297")
         while self.get_availability_of_photo(photo_format):
             if count_photo_on_210x297 == 2:
                 self.save_png_image(image_210x297, self.dir_to_print + "cup_" + str(
                                     self.get_time_for_filename()) + '.png')
-                image_210x297 = self.new_image_210x297()
+                image_210x297 = self.new_image("210x297")
                 count_photo_on_210x297 = 0
             image, title = self.get_not_printed_photo_with_title(photo_format)
             image_cup = Image.open(image)
@@ -193,10 +206,11 @@ class ThreadForConvert(QtCore.QThread):
             badge_img = Image.open(img)
             print(badge_img.getbbox())
 
-    def add_flat_photo_to_61x32(self):
-        point = [(59, 0), (2421, 0), (4783, 0)]
+    def add_flat_photo_20x32_to_61x32(self):
+        # point = [(59, 0), (2421, 0), (4783, 0)]
+        point = [(59, 0), (2521, 0), (4883, 0)]
         count_photo_on_61x32 = 0
-        image_61x32 = self.new_image_61x32()
+        image_61x32 = self.new_image("610x320")
         while self.get_availability_of_flat_photo():
             image_20x32 = self.get_flat_photo_on_20x32()
             image_61x32.paste(image_20x32, point[count_photo_on_61x32])
@@ -208,6 +222,25 @@ class ThreadForConvert(QtCore.QThread):
                 count_photo_on_61x32 += 1
         if count_photo_on_61x32 != 0:
             self.save_png_image(image_61x32, self.dir_to_print + str(self.get_time_for_filename()) + '.png')
+        return
+
+    def add_flat_photo_225x320_to_61x32(self):
+        point = [(60, 0), (2890, 0), (5670, 0)]
+        count_photo_on_61x32 = 0
+        image_61x32 = self.new_image("610x320")
+        while self.get_availability_of_flat_photo():
+            if count_photo_on_61x32 == 2:
+                image_11x32 = self.get_photo_on_11x32()
+                image_61x32.paste(image_11x32, point[count_photo_on_61x32])
+                self.save_png_image(image_61x32, self.dir_for_save_complete_file + str(self.get_time_for_filename()) + ".png")
+                count_photo_on_61x32 = 0
+                image_61x32 = self.new_image("610x320")
+            elif count_photo_on_61x32 < 2:
+                image_225x320 = self.get_flat_photo_on_225x320()
+                image_61x32.paste(image_225x320, point[count_photo_on_61x32])
+                count_photo_on_61x32 += 1
+        if count_photo_on_61x32 != 0:
+            self.save_png_image(image_61x32, self.dir_for_save_complete_file + str(self.get_time_for_filename()) + '.png')
         return
 
     def add_wallpaper_to_61x32(self):
@@ -250,10 +283,6 @@ class ThreadForConvert(QtCore.QThread):
 
     def get_flat_photo_on_20x32(self):
         photo_format_list = ("п_20х30_", "п_15х20_", "п_10х15_", "п_магнит 10х15_", "п_магнит_")
-        # point = [[(0, 118), (0, 76)], [(0, 1024), (0, 974)],
-        #          [(1181, 118), (1181, 76)], [(1181, 1024), (1181, 974)],
-        #          [(0, 1952), (0, 1902)], [(0, 2890), (0, 2840)],
-        #          [(1181, 1952), (1181, 1902)], [(1181, 2890), (1181, 2840)]]
         point = [[(0, 117), (0, 70)], [(0, 1024), (0, 974)],
                  [(1181, 117), (1181, 70)], [(1181, 1024), (1181, 974)],
                  [(0, 117), (0, 70)], [(0, 1024), (0, 974)],
@@ -279,13 +308,42 @@ class ThreadForConvert(QtCore.QThread):
             continue
         return img20x32
 
+    def get_flat_photo_on_225x320(self):
+        # point = [[(30, 60), (30, 10)],
+        #          [(30, 950), (30, 900)],
+        #          [(30, 1910), (30, 1860)],
+        #          [(30, 2840), (30, 2790)]]
+        photo_format_list = ("п_20х30_", "п_15х20_", "п_10х15_", "п_магнит 10х15_", "п_магнит_")
+        point = [[(50, 67), (50, 20)], [(50, 1000), (50, 950)],
+                 [(1331, 67), (1331, 20)], [(1331, 1000), (1331, 950)],
+                 [(50, 1947), (50, 1900)], [(50, 2890), (50, 2840)],
+                 [(1331, 1947), (1331, 1907)], [(1331, 2890), (1331, 2840)]]
+        places = [0, 0,
+                  0, 0,
+                  0, 0,
+                  0, 0]
+        img225x320 = self.new_image("225x320")
+        for photo_format in photo_format_list:
+            while self.get_availability_of_photo(photo_format):
+                if self.get_availability_of_free_space(places, photo_format):
+                    number_of_place, new_free_places = self.get_free_place(places, photo_format)
+                    places = new_free_places
+                    img_file, title = self.get_not_printed_photo_with_title(photo_format)
+                    img = Image.open(img_file)
+                    img225x320.paste(img, point[number_of_place][0])
+                    img225x320 = self.draw_title(img225x320, title, point[number_of_place][1])
+                else:
+                    break
+            continue
+        return img225x320
+
     def get_photo_on_11x32(self):
         point = [[(30, 60), (30, 10)],
                  [(30, 950), (30, 900)],
                  [(30, 1910), (30, 1860)],
                  [(30, 2840), (30, 2790)]]
         places = [0, 0, 0, 0]
-        image_11x32 = self.new_image_11x32()
+        image_11x32 = self.new_image("110x320")
         while self.get_availability_of_free_space(places, "п_магнит 10х15_"):
             if self.get_availability_of_photo("п_магнит 10х15_"):
                 number_of_place, new_free_places = self.get_free_place(places, "п_магнит 10х15_")
@@ -351,7 +409,7 @@ class ThreadForConvert(QtCore.QThread):
         return False
 
     def get_time_for_filename(self):
-        x = datetime.datetimedc7.now()
+        x = datetime.datetime.now()
         return x.strftime("%d-%b %H_%M_%S_%f")
 
     def get_availability_of_flat_photo(self):
@@ -364,56 +422,42 @@ class ThreadForConvert(QtCore.QThread):
     def get_availability_of_photo(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
         for k, v in dict_current_photo_format.items():
-            if v[2] == "not printed":
+            if v["Напечатанно"] == "not printed":
                 return True
         return False
 
     def get_not_printed_photo_with_title(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
         for k, v in dict_current_photo_format.items():
-            photo_summ = int(v[0])
-            printed_summ = v[1]
-            if v[2] == "not printed":
+            photo_sum = int(v["Количество"])
+            printed_sum = v["Количество напечатанных"]
+            if v["Напечатанно"] == "not printed":
                 img_absolute_path = k
-                title = str(v[5]) + " " + str(v[3]) + " " + str(v[0]) + " " + str(v[4])
-                printed_summ += 1
-                v[1] = printed_summ
-                if printed_summ == photo_summ:
-                    v[2] = "printed"
+                title = str(v["Формат фото"]) + str(v["Количество"]) + " " + str(v["Фото ребенка"]) + " " + str(v["Класс"])
+                printed_sum += 1
+                v["Количество напечатанных"] = printed_sum
+                if printed_sum == photo_sum:
+                    v["Напечатанно"] = "printed"
                 dict_current_photo_format[k] = v
                 return img_absolute_path, title
         return None
 
-    def new_image_20x32(self):
-        """Создание изображения размерами 20х32 см"""
-        return Image.new('RGB', (2362, 3780), color=(255, 255, 255))
-
-    def new_image_61x32(self):
-        """Создание изображения размерами 61х32 см"""
-        return Image.new('RGB', (7205, 3780), color=(255, 255, 255))
-
-    def new_image_11x32(self):
-        """Создаем изображение размерами 11х32 см"""
-        return Image.new('RGB', (1299, 3780), color=(255, 255, 255))
-
-    def new_image_225x320(self):
-        """Создаем изображение размерами 11х32 см"""
-        return Image.new('RGB', (2657, 3780), color=(255, 255, 255))
-
-    def new_image_210x297(self):
-        """Создаем изображение размерами 11х32 см"""
-        return Image.new('RGB', (2480, 3508), color=(255, 255, 255))
+    def new_image(self, size):
+        size_settings = self.sizes_foto[size]
+        return Image.new(size_settings["ColorSpace"], size_settings["Size"], size_settings["Color"])
 
 # Функции конвертирования из psd в png и вращения фотографии
     def convert_psd_to_png(self):
         self.messages_what_work.emit("Конвертирую файлы в png")
         count = 0
         for object_path, files in self.dict_of_psd_files.items():
-            print(files)
             current_object = os.path.split(object_path)[1]
-            path_for_png = self.dir_for_png + '\\' + current_object
+            path_for_png = self.dir_for_png + os.sep + current_object
+            self.check_exists_dir(path_for_png)
             for file_name, attribute in files.items():
-                psd_file = PSDImage.open(object_path + '\\' + file_name)  # открываем psd файл
+                # получаем имя png файла, включая путь
+                png_file_name = self.change_format_file_name(file_name, path_for_png)
+                psd_file = PSDImage.open(object_path + os.sep + file_name)  # открываем psd файл
                 img = psd_file.composite()  # сливаем слои, и получаем изображение типа PIL
                 # из имени файла, получаем формат фотографии
                 photo_format = attribute["Вид фото"] + "_" + attribute["Формат фото"] + "_"  # формат фотографии
@@ -421,8 +465,6 @@ class ThreadForConvert(QtCore.QThread):
                 photo_summ = attribute["Количество"]  # получаем колиство изделий с кадра
                 group = attribute["Класс"]
                 ratio = self.get_ratio(file_name)  # получаем соотношения сторон
-                # получаем имя png файла, включая путь
-                png_file_name = self.change_format_file_name(file_name, path_for_png)
                 self.add_to_dict_of_photo_png(photo_format, photo_summ, png_file_name,
                                               current_object, children_photo, group)
                 if photo_format in self.flat_photo_name_list:
@@ -530,12 +572,12 @@ class ThreadForConvert(QtCore.QThread):
         return img.resize((new_width, new_height))
 
     def change_format_file_name(self, file_name, path_for_png):
-        new_file_name = path_for_png + '\\' + file_name[0: -4] + '.png'
+        new_file_name = path_for_png + os.sep + file_name[0: -4] + '.png'
         return new_file_name
 
     def save_png_image(self, img, png_file_name):
         try:
-            img.save(png_file_name, compress_level=0, dpi=self.photo_dpi)
+            img.save(png_file_name, compress_level=0, dpi=self.dpi)
         except Exception as e:
             print(e)
 
