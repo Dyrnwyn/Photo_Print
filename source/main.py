@@ -5,6 +5,7 @@ import choiceDialog
 from PyQt5 import QtWidgets, QtCore
 from combinator import search_file, ThreadForConvert
 import json
+import platform
 
 
 class dialogChoiseFoto(QtWidgets.QDialog, choiceDialog.Ui_Dialog):
@@ -68,8 +69,7 @@ class MainApp(QtWidgets.QMainWindow, window.Ui_MainWindow):
         self.convert_psd_to_png_thread.messages_what_work.connect(self.on_change_convert_set_label,
                                                                   QtCore.Qt.QueuedConnection)
         self.setPushButtonSave.clicked.connect(self.save_settings)
-        self.name_settings_directory = 'Настройки'
-        self.settings_directory = os.path.dirname(__file__) + os.sep + self.name_settings_directory + os.sep
+        self.settings_directory = os.path.expanduser("~") + os.sep + "FotoPrint" + os.sep
         if not os.path.exists(self.settings_directory):
             os.mkdir(self.settings_directory)
             self.save_settings()

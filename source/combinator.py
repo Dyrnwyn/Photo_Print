@@ -4,7 +4,7 @@ from psd_tools import PSDImage
 from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
 import datetime
-import platform
+
 
 
 def search_file(flExt, fldr=""):
@@ -58,7 +58,7 @@ class ThreadForConvert(QtCore.QThread):
                      "_Значок 100_": 0.518,
                      "_Значок 158_": 0.84,
                      "_Копилка 158_": 0.84,
-                     "_Кружка-термос с крышкой_": 0}
+                     "_Кружка-термос с крышкой_": (2550, 900)}
     dict_of_photo_png = {"п_10х15_": {},
                          "п_15х20_": {},
                          "п_20х30_": {},
@@ -150,7 +150,7 @@ class ThreadForConvert(QtCore.QThread):
     def add_photo_to_61x32_main(self):
         self.add_wallpaper_to_61x32()
         self.add_flat_photo_225x320_to_61x32()
-        self.add_cup_to_210x197()
+        self.add_cup_photo_20x32_to_61x32()
         #  self.add_badge_to_210x197_main()
 
     def set_var(self, dpi, psd_dict, dir_for_png, dir_to_print,
@@ -199,12 +199,47 @@ class ThreadForConvert(QtCore.QThread):
             self.save_png_image(image_210x297, self.dir_to_print + "cup_" + str(self.get_time_for_filename()) + '.png')
         return
 
+    def get_cup_on_200x320(self):
+        photo_format = "_Кружка-термос с крышкой_"
+        point = [[(20, 75), (20, 15)], [(1280, 75), (1280, 15)]]
+        count_photo_on_200x320 = 0
+        image_200x320 = self.new_image("200x320")
+        while self.get_availability_of_photo(photo_format):
+            image, title = self.get_not_printed_photo_with_title(photo_format)
+            image_cup = Image.open(image)
+            image_200x320.paste(image_cup, point[count_photo_on_200x320][0])
+            image_200x320 = self.draw_title(image_200x320, title, point[count_photo_on_200x320][1])
+            count_photo_on_200x320 += 1
+            if count_photo_on_200x320 == 2:
+                return image_200x320
+        if count_photo_on_200x320 != 0:
+            return image_200x320
+
     def add_badge_to_210x197_main(self):
         photo_format = "_Копилка 158_"
         while self.get_availability_of_photo(photo_format):
             img, title = self.get_not_printed_photo_with_title(photo_format)
             badge_img = Image.open(img)
             print(badge_img.getbbox())
+
+    def add_cup_photo_20x32_to_61x32(self):
+        point = [(59, 0), (2521, 0), (4883, 0)]
+        count_photo_on_61x32 = 0
+        image_61x32 = self.new_image("610x320")
+        while self.get_availability_of_cup_photo():
+            image_20x32 = self.get_cup_on_200x320()
+            image_61x32.paste(image_20x32, point[count_photo_on_61x32])
+            if count_photo_on_61x32 == 2:
+                self.save_png_image(image_61x32, self.dir_for_save_complete_file + "Кружки_" +
+                                    str(self.get_time_for_filename()) + '.png')
+                count_photo_on_61x32 = 0
+                image_61x32 = self.new_image("610x320")
+            else:
+                count_photo_on_61x32 += 1
+        if count_photo_on_61x32 != 0:
+            self.save_png_image(image_61x32, self.dir_for_save_complete_file + "Кружки_" +
+                                str(self.get_time_for_filename()) + '.png')
+        return
 
     def add_flat_photo_20x32_to_61x32(self):
         # point = [(59, 0), (2421, 0), (4783, 0)]
@@ -419,6 +454,13 @@ class ThreadForConvert(QtCore.QThread):
                 return True
         return False
 
+    def get_availability_of_cup_photo(self):
+        flat_photo = ["_Кружка-термос с крышкой_"]
+        for f in flat_photo:
+            if self.get_availability_of_photo(f):
+                return True
+        return False
+
     def get_availability_of_photo(self, photo_format):
         dict_current_photo_format = self.dict_of_photo_png[photo_format]
         for k, v in dict_current_photo_format.items():
@@ -481,7 +523,7 @@ class ThreadForConvert(QtCore.QThread):
                     png_wall_image = self.wall_calendar_image(resized_img)
                     img_for_save = self.rotate_image(png_wall_image, photo_format)
                 elif photo_format in self.cup_name_list:
-                    png_img = self.convert_cup_image(img, ratio)
+                    png_img = self.convert_cup_image(img, photo_format)
                     img_for_save = self.rotate_image(png_img, photo_format)
                 elif photo_format in self.badge_name_list:
                     img_for_save = self.convert_badge_image(img, ratio)
@@ -598,8 +640,10 @@ class ThreadForConvert(QtCore.QThread):
         blured_img.alpha_composite(front_img, (left, top))
         return blured_img
 
-    def convert_cup_image(self, img, ratio):
-        return img
+    def convert_cup_image(self, img, photo_format):
+        new_width = self.dict_of_sizes[photo_format][0]
+        new_height = self.dict_of_sizes[photo_format][1]
+        return img.resize((new_width, new_height))
 
     def convert_badge_image(self, img, ratio):
         new_width = round(img.width * ratio)
