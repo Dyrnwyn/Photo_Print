@@ -5,7 +5,7 @@ import choiceDialog
 from PyQt5 import QtWidgets, QtCore
 from combinator import search_file, ThreadForConvert
 import json
-import platform
+
 
 
 class dialogChoiseFoto(QtWidgets.QDialog, choiceDialog.Ui_Dialog):

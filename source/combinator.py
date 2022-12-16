@@ -5,8 +5,6 @@ from PIL import ImageFilter, Image, ImageDraw, ImageFont
 from PyQt5 import QtCore
 import datetime
 
-
-
 def search_file(flExt, fldr=""):
     # Во временно директории ищем все файлы c переданным разрешением
     # И добавляем их в список
@@ -58,7 +56,7 @@ class ThreadForConvert(QtCore.QThread):
                      "_Значок 100_": 0.518,
                      "_Значок 158_": 0.84,
                      "_Копилка 158_": 0.84,
-                     "_Кружка-термос с крышкой_": (2550, 900)}
+                     "_Кружка-термос с крышкой_": (3012, 1063)}
     dict_of_photo_png = {"п_10х15_": {},
                          "п_15х20_": {},
                          "п_20х30_": {},
@@ -132,7 +130,7 @@ class ThreadForConvert(QtCore.QThread):
         "225x320": {"ColorSpace": 'RGB', "Size": (2657, 3780), "Color": (255, 255, 255)},
         "110x320": {"ColorSpace": 'RGB', "Size": (1299, 3780), "Color": (255, 255, 255)},
         "200x320": {"ColorSpace": 'RGB', "Size": (2362, 3780), "Color": (255, 255, 255)},
-        "610x320": {"ColorSpace": 'RGB', "Size": (7205, 3780), "Color": (255, 255, 255)},
+        "610x320": {"ColorSpace": 'RGB', "Size": (7205, 3898), "Color": (255, 255, 255)},
     }
     current_object = ""
     dir_for_save_complete_file = ""
@@ -475,7 +473,12 @@ class ThreadForConvert(QtCore.QThread):
             printed_sum = v["Количество напечатанных"]
             if v["Напечатанно"] == "not printed":
                 img_absolute_path = k
-                title = str(v["Формат фото"]) + str(v["Количество"]) + " " + str(v["Фото ребенка"]) + " " + str(v["Класс"])
+                if v["Формат фото"] == "_Кружка-термос с крышкой_":
+                    title = str(v["Объект"] + str(v["Количество"]) + " " + str(v["Фото ребенка"]) + " " +
+                                str(v["Класс"]))
+                else:
+                    title = str(v["Объект"] + v["Формат фото"] + str(v["Количество"]) + " " + str(
+                        v["Фото ребенка"]) + " " + str(v["Класс"]))
                 printed_sum += 1
                 v["Количество напечатанных"] = printed_sum
                 if printed_sum == photo_sum:
